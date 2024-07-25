@@ -63,10 +63,10 @@ public class ControllerDijkstra extends Controller {
 
     @Override
     public final void manageRoutingRequest(NetworkPacket data) {
-
+        System.out.println("Manage routing request");
         String destination = data.getNetId() + "." + data.getDst();
         String source = data.getNetId() + "." + data.getSrc();
-
+        System.out.println("Manage routing request -- " + destination + "  " + source);
         if (!source.equals(destination)) {
 
             Node sourceNode = networkGraph.getNode(source);
