@@ -20,6 +20,10 @@ import com.github.sdnwiselab.sdnwise.adapter.Adapter;
 import com.github.sdnwiselab.sdnwise.packet.NetworkPacket;
 import com.github.sdnwiselab.sdnwise.topology.NetworkGraph;
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.graph.Node;
@@ -33,11 +37,12 @@ import org.graphstream.graph.Node;
  * @author Sebastiano Milardo
  * @version 0.1
  */
-public class ControllerDijkstra extends Controller {
+public class CustomController extends Controller {
 
     private final Dijkstra dijkstra;
     private String lastSource = "";
     private long lastModification = -1;
+    private HashMap<String, ArrayList<NodeAddress>> cluster;
 
     /*
      * Constructor method fo ControllerDijkstra.
@@ -46,14 +51,17 @@ public class ControllerDijkstra extends Controller {
      * @param lower Lower Adpater object.
      * @param networkGraph NetworkGraph object.
      */
-    public ControllerDijkstra(Adapter lower, NetworkGraph networkGraph) {
+    public CustomController(Adapter lower, NetworkGraph networkGraph) {
         super(lower, networkGraph);
-        this.dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");        
+        this.dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
+        this.cluster = new HashMap<>();
     }
 
     @Override
     public final void graphUpdate() {
-
+        for (Node n: networkGraph.getGraph()) {
+            System.out.println(n.toString());
+        }
     }
 
     @Override
@@ -105,6 +113,5 @@ public class ControllerDijkstra extends Controller {
 
     @Override
     public void setupNetwork() {
-
     }
 }

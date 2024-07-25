@@ -53,7 +53,12 @@ public class ControllerDijkstra extends Controller {
 
     @Override
     public final void graphUpdate() {
-
+        System.out.println("Graph update");
+        for (Node n: networkGraph.getGraph()) {
+            System.out.println(n.toString());
+        }
+        System.out.println("[CTRL]: " + networkGraph.getGraph());
+        System.out.println("End");
     }
 
     @Override
@@ -105,6 +110,11 @@ public class ControllerDijkstra extends Controller {
 
     @Override
     public void setupNetwork() {
-
+        System.out.println("setupNetwork");
+        for (Node n: networkGraph.getGraph()) {
+            System.out.println(n.toString());
+        }
+        System.out.println("[CTRL]: " + networkGraph.getGraph());
+        System.out.println("End");
     }
 }
