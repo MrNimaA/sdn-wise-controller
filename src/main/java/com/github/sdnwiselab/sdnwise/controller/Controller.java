@@ -107,6 +107,7 @@ public abstract class Controller implements Observer, Runnable, ControllerInterf
 
         switch (data.getType()) {
             case SDN_WISE_REPORT:
+                System.out.println("recieve report packet -- " + new ReportPacket(data).getNeighborsHashMap());
                 networkGraph.updateMap(new ReportPacket(data));
                 break;
             case SDN_WISE_DATA:
