@@ -53,7 +53,9 @@ public class ControllerDijkstra extends Controller {
 
     @Override
     public final void graphUpdate() {
-
+        for (Node n: networkGraph.getGraph()) {
+            System.out.println(n.toString());
+        }
     }
 
     @Override
