@@ -1,0 +1,11 @@
+<settings> 
+<mirrors>
+        <mirror>
+            <id>divar</id>
+            <name>Divar Mirror Repository</name>
+            <url>https://repos.divar.cloud/artifactory/maven2</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+</mirrors>
+</settings>
+
