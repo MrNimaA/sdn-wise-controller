@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 
+import org.apache.commons.math3.analysis.function.Sin;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
@@ -50,7 +51,7 @@ public class CustomController extends Controller {
     private String lastSource = "";
     private long lastModification = -1;
     private HashMap<String, ArrayList<NodeAddress>> cluster;
-    private MultiGraph clusteringGraph;
+    private SingleGraph clusteringGraph;
     private final Random rand = new Random();
     /*
      * Constructor method fo ControllerDijkstra.
