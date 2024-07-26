@@ -11,6 +11,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public class MakeCluster {
+    private static Dijkstra dijkstra;
+
     public static void main(String[] args) {
         System.setProperty("org.graphstream.ui", "swing");
         SingleGraph clusteringGraph = new SingleGraph("cluster");
@@ -18,8 +20,8 @@ public class MakeCluster {
         for (int i = 1; i <= 5; i++) {
             setupNewNode(String.valueOf(i), networkGraph);
         }
-        Node sink = setupNewNode("6", networkGraph);
-        Node source = setupNewNode("7", networkGraph);
+        Node s = setupNewNode("6", networkGraph);
+        Node t = setupNewNode("7", networkGraph);
 
         setupNewEdge("1", "3", networkGraph, "");
         setupNewEdge("3", "5", networkGraph, "");
@@ -33,14 +35,20 @@ public class MakeCluster {
 
         networkGraph.display();
         clusteringGraph.display(true);
-        makeCluster(clusteringGraph, networkGraph, sink, source);
+
+        // Run dijkstra on network graph
+        dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
+        dijkstra.init(networkGraph);
+        dijkstra.setSource(s);
+        dijkstra.compute();
+        makeCluster(clusteringGraph, networkGraph, s, t);
     }
 
 
     public static Edge setupNewEdge(String from, String to, Graph graph, String capacity) {
         Edge e = graph.addEdge(from + "-" + to, from, to);
         e.setAttribute("ui.style", "fill-color: gray;");
-        e.setAttribute("length", "1");
+        e.setAttribute("length", 1);
         if (!capacity.isEmpty()) {
             e.setAttribute("capacity", capacity);
         }
@@ -86,7 +94,7 @@ public class MakeCluster {
                     String neighbor_s = neighbor.getId() + "_s";
                     String neighbor_t = neighbor.getId() + "_t";
                     setupNewNodeForClustering(neighbor_s, neighbor_t, clusteringGraph);
-                    Pair<Double> distances = getDistance(networkGraph, s, n, neighbor);
+                    Pair<Double> distances = getDistance(n, neighbor);
                     double d1 = distances.getFirst();
                     double d2 = distances.getSecond();
                     try {
@@ -142,11 +150,7 @@ public class MakeCluster {
         e.setAttribute("capacity", 1);
     }
 
-    private static Pair<Double> getDistance(Graph graph, Node source, Node target1, Node target2) {
-        Dijkstra dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
-        dijkstra.init(graph);
-        dijkstra.setSource(source);
-        dijkstra.compute();
+    private static Pair<Double> getDistance(Node target1, Node target2) {
         return new Pair<>(dijkstra.getPathLength(target1), dijkstra.getPathLength(target2));
     }
 }
