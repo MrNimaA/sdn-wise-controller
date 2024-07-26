@@ -63,7 +63,7 @@ public class CustomController extends Controller {
         super(lower, networkGraph);
         this.dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
         this.cluster = new HashMap<>();
-        Graph clusteringGraph = new SingleGraph("clustering");
+        this.clusteringGraph = new SingleGraph("clustering");
     }
 
     @Override
