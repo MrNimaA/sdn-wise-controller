@@ -1,15 +1,14 @@
 package com.github.sdnwiselab.sdnwise;
 
 import org.graphstream.algorithm.Dijkstra;
+import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.MultiGraph;
 import org.graphstream.graph.implementations.SingleGraph;
-import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.Random;
 
 public class MakeCluster {
     public static void main(String[] args) {
@@ -17,88 +16,99 @@ public class MakeCluster {
         SingleGraph clusteringGraph = new SingleGraph("cluster");
         MultiGraph networkGraph = new MultiGraph("cluster2");
         for (int i = 1; i <= 5; i++) {
-            networkGraph.addNode(String.valueOf(i)).setAttribute("ui.label", String.valueOf(i));
+            setupNewNode(String.valueOf(i), networkGraph);
         }
-        networkGraph.addNode("6").setAttribute("ui.label", "ht");
-        networkGraph.addNode("7").setAttribute("ui.label", "hs");
+        Node sink = setupNewNode("6", networkGraph);
+        Node source = setupNewNode("7", networkGraph);
 
-        networkGraph.addEdge("1-3", "1", "3");
-        networkGraph.addEdge("3-5", "3", "5");
-        networkGraph.addEdge("5-4", "5", "4");
-        networkGraph.addEdge("2-4", "2", "4");
-        networkGraph.addEdge("1-2", "1", "2");
-        networkGraph.addEdge("5-7", "5", "7");
-        networkGraph.addEdge("4-7", "4", "7");
-        networkGraph.addEdge("6-1", "6", "1");
-        networkGraph.addEdge("6-2", "6", "2");
-
-        for (int i = 1; i <= 7; i++) {
-            networkGraph.getNode(String.valueOf(i)).setAttribute("ui.style", "fill-color: blue; size: 20px;");
-        }
-        networkGraph.getEachEdge().forEach(e -> e.setAttribute("ui.style", "fill-color: gray;"));
-        networkGraph.getEachEdge().forEach(e -> e.setAttribute("length", "1"));
+        setupNewEdge("1", "3", networkGraph, "");
+        setupNewEdge("3", "5", networkGraph, "");
+        setupNewEdge("5", "4", networkGraph, "");
+        setupNewEdge("2", "4", networkGraph, "");
+        setupNewEdge("1", "2", networkGraph, "");
+        setupNewEdge("5", "7", networkGraph, "");
+        setupNewEdge("4", "7", networkGraph, "");
+        setupNewEdge("6", "1", networkGraph, "");
+        setupNewEdge("6", "2", networkGraph, "");
 
         networkGraph.display();
         clusteringGraph.display(true);
-        makeCluster(clusteringGraph, networkGraph);
+        makeCluster(clusteringGraph, networkGraph, sink, source);
     }
 
-    public static void makeCluster(SingleGraph clusteringGraph, MultiGraph networkGraph) {
+
+    public static Edge setupNewEdge(String from, String to, Graph graph, String capacity) {
+        Edge e = graph.addEdge(from + "-" + to, from, to);
+        e.setAttribute("ui.style", "fill-color: gray;");
+        e.setAttribute("length", "1");
+        if (!capacity.isEmpty()) {
+            e.setAttribute("capacity", capacity);
+        }
+        return e;
+    }
+
+    public static Node setupNewNode(String nodeId, Graph graph) {
+        Node n = graph.addNode(nodeId);
+        n.setAttribute("ui.label", nodeId);
+        n.setAttribute("ui.style", "fill-color: blue; size: 20px;");
+        return n;
+    }
+
+    public static void makeCluster(SingleGraph clusteringGraph, MultiGraph networkGraph, Node s, Node t) {
         clusteringGraph.clear();
         int nodeNumber = networkGraph.getNodeCount();
-        Random rand = new Random();
-        Node h1 = networkGraph.getNode("6");
-        Node h2 = networkGraph.getNode("7");
-        clusteringGraph.addNode(h1.getId()).addAttribute("ui.label","hs");
-        clusteringGraph.addNode(h2.getId()).addAttribute("ui.label","ht");
+        clusteringGraph.addNode(s.getId()).addAttribute("ui.label", "hs");
+        clusteringGraph.addNode(t.getId()).addAttribute("ui.label", "ht");
         Dijkstra dj = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
-        for (Node n: networkGraph.getEachNode()) {
-            if (n.getId().equals(h1.getId()) || n.getId().equals(h2.getId()))
+        for (Node n : networkGraph.getEachNode()) {
+            if (n.getId().equals(s.getId()) || n.getId().equals(t.getId()))
                 continue;
-            String ns = n.getId()+"_s";
-            String nt = n.getId()+"_t";
+            String ns = n.getId() + "_s";
+            String nt = n.getId() + "_t";
             setupNewNodeForClustering(ns, nt, clusteringGraph);
-            for (Edge e:n.getEachEdge()){
+            for (Edge e : n.getEachEdge()) {
                 Node neighbor = e.getNode1();
                 if (neighbor.getId().equals(n.getId()))
                     neighbor = e.getNode0();
-                if (neighbor.getId().equals(h2.getId())) {
-                    Edge edge = clusteringGraph.addEdge(nt + "-" + h2.getId(), nt, h2.getId());
+                if (neighbor.getId().equals(t.getId())) {
+                    String edgeLabel = nt + "-" + t.getId();
+                    Edge edge = clusteringGraph.addEdge(edgeLabel, nt, t.getId());
+                    edge.setAttribute("ui.label", edgeLabel);
                     edge.setAttribute("length", 1);
                     edge.setAttribute("capacity", nodeNumber);
-                }
-                else if (neighbor.getId().equals(h1.getId())) {
-                    Edge edge = clusteringGraph.addEdge(h1.getId() + "-" + ns  , h1.getId(), ns);
+                } else if (neighbor.getId().equals(s.getId())) {
+                    String edgeLabel = s.getId() + "-" + ns;
+                    Edge edge = clusteringGraph.addEdge(edgeLabel, s.getId(), ns);
+                    edge.setAttribute("ui.label", edgeLabel);
                     edge.setAttribute("length", 1);
                     edge.setAttribute("capacity", nodeNumber);
-                }
-                else {
-                    String neighbors = neighbor.getId()+"_s";
-                    String neighbort = neighbor.getId()+"_t";
-                    setupNewNodeForClustering(neighbors, neighbort, clusteringGraph);
-                    int d1 = getDistance(dj, n ,h1, networkGraph);
-                    int d2 = getDistance(dj, neighbor, h1, networkGraph);
-//                    System.out.println(n + " - " + h1 + " - " + d1);
-//                    System.out.println(neighbor + " - " + h1 + " - " + d2);
+                } else {
+                    String neighbor_s = neighbor.getId() + "_s";
+                    String neighbor_t = neighbor.getId() + "_t";
+                    setupNewNodeForClustering(neighbor_s, neighbor_t, clusteringGraph);
+                    Pair<Double> distances = getDistance(networkGraph, s, n, neighbor);
+                    double d1 = distances.getFirst();
+                    double d2 = distances.getSecond();
                     try {
                         Edge edge;
                         if (d1 == d2)
-                            edge = clusteringGraph.addEdge(neighbors + "-" + ns, ns, neighbors);
+                            edge = clusteringGraph.addEdge(neighbor_s + "-" + ns, ns, neighbor_s);
                         else if (d1 < d2)
-                            edge = clusteringGraph.addEdge(nt + "-" + neighbors, nt, neighbors);
+                            edge = clusteringGraph.addEdge(nt + "-" + neighbor_s, nt, neighbor_s);
                         else
-                            edge = clusteringGraph.addEdge(neighbort + "-" + ns, ns, neighbort);
+                            edge = clusteringGraph.addEdge(neighbor_t + "-" + ns, ns, neighbor_t);
                         edge.setAttribute("length", 1);
                         edge.setAttribute("capacity", nodeNumber);
-                    } catch (IdAlreadyInUseException|EdgeRejectedException ignored){}
+                    } catch (IdAlreadyInUseException | EdgeRejectedException ignored) {
+                    }
                 }
             }
         }
         FordFulkersonAlgorithm fd = new FordFulkersonAlgorithm();
         fd.setCapacityAttribute("capacity");
-        fd.init(clusteringGraph, h1.getId(), h2.getId());
+        fd.init(clusteringGraph, s.getId(), t.getId());
         fd.compute();
-        bfs(fd, clusteringGraph.getNode(h1.getId()));
+        bfs(fd, clusteringGraph.getNode(s.getId()));
         System.out.println("Make Cluster End -- Max Flow: " + fd.getMaximumFlow());
     }
 
@@ -109,9 +119,9 @@ public class MakeCluster {
         visited.add(source.getId());
         while (!queue.isEmpty()) {
             Node node = queue.poll();
-            for (Edge e: node.getEachEdge()){
+            for (Edge e : node.getEachEdge()) {
                 Node neighbor = e.getOpposite(node);
-                if ((int)e.getAttribute("capacity") == fd.getFlow(node, neighbor))
+                if ((int) e.getAttribute("capacity") == fd.getFlow(node, neighbor))
                     continue;
                 if (visited.contains(neighbor.getId()))
                     continue;
@@ -127,22 +137,34 @@ public class MakeCluster {
             return;
         clusteringGraph.addNode(nodes).addAttribute("ui.label", nodes);
         clusteringGraph.addNode(nodet).addAttribute("ui.label", nodet);
-        Edge e = clusteringGraph.addEdge(nodes+"-"+nodet, nodes, nodet);
+        Edge e = clusteringGraph.addEdge(nodes + "-" + nodet, nodes, nodet);
         e.setAttribute("length", 1);
         e.setAttribute("capacity", 1);
     }
 
-    private static int getDistance(Dijkstra d, Node source, Node target, MultiGraph networkGraph) {
-        d.setSource(source);
-        d.init(networkGraph);
-        d.compute();
-        int distance = 0;
-        for (Node n: d.getPathNodes(target)) {
-//            System.out.println(n);
-            distance++;
-        }
-//        System.out.println(d.getPath(networkGraph.getNode("2")).size());
-        d.clear();
-        return distance;
+    private static Pair<Double> getDistance(Graph graph, Node source, Node target1, Node target2) {
+        Dijkstra dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
+        dijkstra.init(graph);
+        dijkstra.setSource(source);
+        dijkstra.compute();
+        return new Pair<>(dijkstra.getPathLength(target1), dijkstra.getPathLength(target2));
+    }
+}
+
+class Pair<Double> {
+    private final Double first;
+    private final Double second;
+
+    public Pair(Double first, Double second) {
+        this.first = first;
+        this.second = second;
+    }
+
+    public Double getFirst() {
+        return first;
+    }
+
+    public Double getSecond() {
+        return second;
     }
 }
