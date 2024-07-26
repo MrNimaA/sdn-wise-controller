@@ -71,6 +71,8 @@ public class ControllerFactory {
         switch (type) {
             case "DIJKSTRA":
                 return new ControllerDijkstra(adapt, ng);
+            case "CUSTOM":
+                return new CustomController(adapt, ng);
             default:
                 throw new UnsupportedOperationException("Error in Configuration file");
         }

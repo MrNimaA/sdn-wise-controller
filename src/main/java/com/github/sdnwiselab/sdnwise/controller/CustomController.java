@@ -25,8 +25,15 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Random;
+
 import org.graphstream.algorithm.Dijkstra;
+import org.graphstream.graph.Edge;
+import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
+import org.graphstream.graph.implementations.MultiGraph;
+import org.graphstream.graph.implementations.SingleGraph;
+import scala.util.parsing.combinator.testing.Str;
 
 /**
  * This class implements the Controller class using the Dijkstra routing
@@ -43,7 +50,8 @@ public class CustomController extends Controller {
     private String lastSource = "";
     private long lastModification = -1;
     private HashMap<String, ArrayList<NodeAddress>> cluster;
-
+    private MultiGraph clusteringGraph;
+    private final Random rand = new Random();
     /*
      * Constructor method fo ControllerDijkstra.
      * 
@@ -55,14 +63,85 @@ public class CustomController extends Controller {
         super(lower, networkGraph);
         this.dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
         this.cluster = new HashMap<>();
+        Graph clusteringGraph = new SingleGraph("clustering");
     }
 
     @Override
     public final void graphUpdate() {
+        System.out.println("Graph update");
         for (Node n: networkGraph.getGraph()) {
             System.out.println(n.toString());
         }
+        System.out.println("[CTRL]: " + networkGraph.getGraph());
+        System.out.println("End");
+
+        System.out.println("Calling make cluster");
+        makeCluster();
     }
+
+    public final void makeCluster() {
+        clusteringGraph.clear();
+        int nodeNumber = networkGraph.getGraph().getNodeCount();
+        Node h1 = networkGraph.getGraph().getNode(rand.nextInt(nodeNumber));
+        Node h2 = networkGraph.getGraph().getNode(rand.nextInt(nodeNumber));
+        clusteringGraph.addNode(h1.getId()).addAttribute("ui.label",h1.getId());
+        clusteringGraph.addNode(h2.getId()).addAttribute("ui.label",h2.getId());
+        Dijkstra dj = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
+        for (Node n: networkGraph.getGraph().getEachNode()) {
+            if (n.getId().equals(h1.getId()) || n.getId().equals(h2.getId()))
+                continue;
+            String ns = n.getId()+"_s";
+            String nt = n.getId()+"_t";
+            setupNewNodeForClustering(ns, nt);
+            for (Edge e:n.getEachEdge()){
+                Node neighbor = e.getNode1();
+                if (neighbor.getId().equals(n.getId()))
+                    neighbor = e.getNode0();
+                if (neighbor.getId().equals(h2.getId())) {
+                    Edge edge = clusteringGraph.addEdge(nt + "-" + h2.getId(), nt, h2.getId());
+                    edge.setAttribute("length", 1);
+                }
+                else if (neighbor.getId().equals(h2.getId())) {
+                    Edge edge = clusteringGraph.addEdge(ns + "-" + h1.getId(), ns, h1.getId());
+                    edge.setAttribute("length", 1);
+                }
+                else {
+                    String neighbors = neighbor.getId()+"_s";
+                    String neighbort = neighbor.getId()+"_t";
+                    setupNewNodeForClustering(neighbors, neighbort);
+                    int d1 = getDistance(dj, n ,h1);
+                    int d2 = getDistance(dj, neighbor, h1);
+                    if (d1 == d2)
+                        clusteringGraph.addEdge(nt+"-"+neighbors, nt, neighbors).setAttribute("length", 1);
+                    else if (d1 < d2)
+                        clusteringGraph.addEdge(nt+"-"+neighbors, nt, neighbors).setAttribute("length", 1);
+                    else
+                        clusteringGraph.addEdge(ns+"-"+neighbors, ns, neighbors).setAttribute("length", 1);
+                }
+            }
+        }
+        clusteringGraph.display(true);
+        System.out.println("Make Cluster End");
+    }
+
+    private void setupNewNodeForClustering(String nodes, String nodet) {
+        clusteringGraph.addNode(nodes).addAttribute("ui.label", nodes);
+        clusteringGraph.addNode(nodet).addAttribute("ui.label", nodet);
+        clusteringGraph.addEdge(nodes+"-"+nodet,
+                nodes, nodet).setAttribute("length", 1);
+    }
+
+    private int getDistance(Dijkstra d, Node source, Node target) {
+        d.clear();
+        d.setSource(source);
+        d.init(networkGraph.getGraph());
+        d.compute();
+        int distance = 0;
+        for (Node n: d.getPathNodes(target))
+            distance++;
+        return distance;
+    }
+
 
     @Override
     public final void manageRoutingRequest(NetworkPacket data) {

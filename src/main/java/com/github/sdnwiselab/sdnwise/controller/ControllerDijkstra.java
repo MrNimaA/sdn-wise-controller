@@ -37,6 +37,7 @@ public class ControllerDijkstra extends Controller {
 
     private final Dijkstra dijkstra;
     private String lastSource = "";
+
     private long lastModification = -1;
 
     /*

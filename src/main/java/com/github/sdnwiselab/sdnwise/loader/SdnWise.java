@@ -19,8 +19,11 @@ package com.github.sdnwiselab.sdnwise.loader;
 import com.github.sdnwiselab.sdnwise.configuration.Configurator;
 import com.github.sdnwiselab.sdnwise.controller.Controller;
 import com.github.sdnwiselab.sdnwise.controller.ControllerFactory;
+import com.github.sdnwiselab.sdnwise.controller.CustomController;
 import com.github.sdnwiselab.sdnwise.packet.DataPacket;
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
+import org.graphstream.graph.Graph;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -84,7 +87,6 @@ public class SdnWise {
 
     public void startExample() {
         controller = startController("");
-
         System.out.println("SDN-WISE Controller running....");
         
         // We wait for the network to start 
