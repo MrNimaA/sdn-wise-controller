@@ -57,8 +57,8 @@ public class ControllerFactory {
         switch (graph) {
             case "CLI":
                 return new NetworkGraph(timeout, rssiResolution);
-            case "GUI":
-                return new VisualNetworkGraph(timeout, rssiResolution);
+//            case "GUI":
+//                return new VisualNetworkGraph(timeout, rssiResolution);
             default:
                 throw new UnsupportedOperationException("Error in Configuration file");
         }

@@ -18,16 +18,18 @@ package com.github.sdnwiselab.sdnwise.controller;
 
 import com.github.sdnwiselab.sdnwise.adapter.Adapter;
 import com.github.sdnwiselab.sdnwise.packet.NetworkPacket;
+import com.github.sdnwiselab.sdnwise.topology.Edge;
 import com.github.sdnwiselab.sdnwise.topology.NetworkGraph;
+import com.github.sdnwiselab.sdnwise.topology.Node;
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+
 import java.util.LinkedList;
-import org.graphstream.algorithm.Dijkstra;
-import org.graphstream.graph.Node;
 
 /**
  * This class implements the Controller class using the Dijkstra routing
  * algorithm in order to find the shortest path between nodes. When a request
- * from the network is sent, this class sends a SDN_WISE_OPEN_PATH message with
+ * from the network is sent, this class sends an SDN_WISE_OPEN_PATH message with
  * the shortest path. No action is taken if the topology of the network changes.
  *
  * @author Sebastiano Milardo
@@ -35,20 +37,17 @@ import org.graphstream.graph.Node;
  */
 public class ControllerDijkstra extends Controller {
 
-    private final Dijkstra dijkstra;
     private String lastSource = "";
     private long lastModification = -1;
 
-    /*
-     * Constructor method fo ControllerDijkstra.
-     * 
-     * @param id ControllerId object.
-     * @param lower Lower Adpater object.
+    /**
+     * Constructor Method for the Controller Class.
+     *
+     * @param lower        Lower Adapter object.
      * @param networkGraph NetworkGraph object.
      */
-    public ControllerDijkstra(Adapter lower, NetworkGraph networkGraph) {
+    ControllerDijkstra(Adapter lower, NetworkGraph networkGraph) {
         super(lower, networkGraph);
-        this.dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
     }
 
     @Override
@@ -72,9 +71,6 @@ public class ControllerDijkstra extends Controller {
 
                 if (!lastSource.equals(source) || lastModification != networkGraph.getLastModification()) {
                     results.clear();
-                    dijkstra.init(networkGraph.getGraph());
-                    dijkstra.setSource(networkGraph.getNode(source));
-                    dijkstra.compute();
                     lastSource = source;
                     lastModification = networkGraph.getLastModification();
                 } else {
@@ -82,8 +78,9 @@ public class ControllerDijkstra extends Controller {
                 }
                 if (path == null) {
                     path = new LinkedList<>();
-                    for (Node node : dijkstra.getPathNodes(networkGraph.getNode(destination))) {
-                        path.push((NodeAddress) node.getAttribute("nodeAddress"));
+                    DijkstraShortestPath<Node, Edge> dijkstra = new DijkstraShortestPath<>(this.getNetworkGraph().getGraph());
+                    for (Node node : dijkstra.getPath(sourceNode, destinationNode).getVertexList()){
+                        path.push(node.getNodeAddress());
                     }
                     System.out.println("[CTRL]: " + path);
                     results.put(data.getDst(), path);

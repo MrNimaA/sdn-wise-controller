@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2015 SDN-WISE
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,16 +18,17 @@ package com.github.sdnwiselab.sdnwise.topology;
 
 import com.github.sdnwiselab.sdnwise.packet.ReportPacket;
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
+
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Set;
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Graph;
-import org.graphstream.graph.Node;
-import org.graphstream.graph.implementations.MultiGraph;
+
+import org.jgrapht.Graph;
+import org.jgrapht.graph.DirectedMultigraph;
 
 /**
- * This class holds a org.graphstream.graph.Graph object which represent the
+ * This class holds a org.jgrapht.Graph object which represent the
  * topology of the wireless sensor network. The method updateMap is invoked when
  * a message with topology updates is sent to the controller.
  *
@@ -36,11 +37,13 @@ import org.graphstream.graph.implementations.MultiGraph;
  */
 public class NetworkGraph extends Observable {
 
-    final Graph graph;
+    final Graph<Node, Edge> graph;
     private long lastModification;
     private final int timeout;
     final int rssiResolution;
     private long lastCheck;
+    private final Hashtable<String, Node> nodes;
+    private final Hashtable<String, Edge> edges;
 
     /**
      * This constructor returns the NetworkGraph object. It requires a time to
@@ -48,17 +51,17 @@ public class NetworkGraph extends Observable {
      * resolution in order to consider a change of the RSSI value a change in
      * the network.
      *
-     * @param timeout the time to live for a node in seconds
+     * @param timeout        the time to live for a node in seconds
      * @param rssiResolution the RSSI resolution
      */
     public NetworkGraph(int timeout, int rssiResolution) {
-        this.graph = new MultiGraph("SDN-WISE Network");
+        this.graph = new DirectedMultigraph<>(Edge.class);
         this.lastModification = Long.MIN_VALUE;
         this.rssiResolution = rssiResolution;
         this.timeout = timeout;
         this.lastCheck = System.currentTimeMillis();
-        graph.setAutoCreate(true);
-        graph.setStrict(false);
+        this.nodes = new Hashtable<>();
+        this.edges = new Hashtable<>();
     }
 
     /**
@@ -76,7 +79,7 @@ public class NetworkGraph extends Observable {
      *
      * @return returns a Graph object
      */
-    public Graph getGraph() {
+    public Graph<Node, Edge> getGraph() {
         return graph;
     }
 
@@ -84,9 +87,9 @@ public class NetworkGraph extends Observable {
         boolean modified = false;
         if (now - lastCheck > (timeout * 1000L)) {
             lastCheck = now;
-            for (Node n : graph) {
-                if (n.getAttribute("lastSeen", Long.class) != null) {
-                    if (!isAlive(timeout, (long) n.getNumber("lastSeen"), now)) {
+            for (Node n : graph.vertexSet()) {
+                if (n.getLastSeen() != null) {
+                    if (!isAlive(timeout, (long) n.getLastSeen(), now)) {
                         removeNode(n);
                         modified = true;
                     }
@@ -109,7 +112,7 @@ public class NetworkGraph extends Observable {
         boolean modified = checkConsistency(now);
 
         int netId = packet.getNetId();
-        int batt = packet.getBatt();
+        int battery = packet.getBatt();
         String nodeId = packet.getSrc().toString();
         String fullNodeId = netId + "." + nodeId;
         NodeAddress addr = packet.getSrc();
@@ -118,7 +121,7 @@ public class NetworkGraph extends Observable {
 
         if (node == null) {
             node = addNode(fullNodeId);
-            setupNode(node, batt, now, netId, addr);
+            setupNode(node, battery, now, netId, addr);
 
             for (int i = 0; i < packet.getNeigh(); i++) {
                 NodeAddress otheraddr = packet.getNeighbourAddress(i);
@@ -130,17 +133,14 @@ public class NetworkGraph extends Observable {
 
                 int newLen = 255 - packet.getNeighbourWeight(i);
                 String edgeId = other + "-" + fullNodeId;
-                Edge edge = addEdge(edgeId, other, node.getId(), true);
+                Edge edge = addEdge(edgeId, other, node.getId());
                 setupEdge(edge, newLen);
             }
             modified = true;
 
         } else {
-            updateNode(node, batt, now);
-            Set<Edge> oldEdges = new HashSet<>();
-            for (Edge e : node.getEnteringEdgeSet()) {
-                oldEdges.add(e);
-            }
+            updateNode(node, battery, now);
+            Set<Edge> oldEdges = new HashSet<>(graph.incomingEdgesOf(node));
 
             for (int i = 0; i < packet.getNeigh(); i++) {
                 NodeAddress otheraddr = packet.getNeighbourAddress(i);
@@ -156,13 +156,13 @@ public class NetworkGraph extends Observable {
                 Edge edge = getEdge(edgeId);
                 if (edge != null) {
                     oldEdges.remove(edge);
-                    int oldLen = edge.getAttribute("length");
+                    int oldLen = edge.getLength();
                     if (Math.abs(oldLen - newLen) > rssiResolution) {
                         updateEdge(edge, newLen);
                         modified = true;
                     }
                 } else {
-                    Edge tmp = addEdge(edgeId, other, node.getId(), true);
+                    Edge tmp = addEdge(edgeId, other, node.getId());
                     setupEdge(tmp, newLen);
                     modified = true;
                 }
@@ -188,62 +188,88 @@ public class NetworkGraph extends Observable {
     }
 
     void setupNode(Node node, int batt, long now, int netId, NodeAddress addr) {
-        node.addAttribute("battery", batt);
-        node.addAttribute("lastSeen", now);
-        node.addAttribute("netId", netId);
-        node.addAttribute("nodeAddress", addr);
+        node.setBattery(batt);
+        node.setLastSeen(now);
+        node.setNetId(netId);
+        node.setNodeAddress(addr);
     }
 
     void updateNode(Node node, int batt, long now) {
-        node.addAttribute("battery", batt);
-        node.addAttribute("lastSeen", now);
+        node.setBattery(batt);
+        node.setLastSeen(now);
     }
 
     void setupEdge(Edge edge, int newLen) {
-        edge.addAttribute("length", newLen);
+        edge.setLength(newLen);
+        this.graph.setEdgeWeight(edge, edge.getLength());
     }
 
     void updateEdge(Edge edge, int newLen) {
-        edge.addAttribute("length", newLen);
+        edge.setLength(newLen);
+        this.graph.setEdgeWeight(edge, edge.getLength());
     }
 
-    <T extends Node> T addNode(String id) {
-        return graph.addNode(id);
+    Node addNode(String id) {
+        if (this.nodes.containsKey(id))
+            throw new IndexOutOfBoundsException();
+        Node node = new Node(id);
+        this.nodes.put(id, node);
+        this.graph.addVertex(node);
+        return node;
     }
 
-    <T extends Edge> T addEdge(String id, String from, String to,
-            boolean directed) {
-        return graph.addEdge(id, from, to, directed);
+    Edge addEdge(String id, String from, String to) {
+        if (!nodes.containsKey(from) || !nodes.containsKey(to))
+            throw new IllegalArgumentException();
+        if (edges.containsKey(id))
+            throw new IllegalArgumentException();
+        Edge edge = new Edge(id, nodes.get(from), nodes.get(to));
+        boolean beenAdded = this.graph.addEdge(nodes.get(from), nodes.get(to), edge);
+        if (beenAdded) {
+            this.edges.put(id, edge);
+            return edge;
+        }
+        return null;
     }
 
-    <T extends Edge> T removeEdge(Edge edge) {
-        return graph.removeEdge(edge);
+    void removeEdge(Edge edge) {
+        if (!edges.containsKey(edge.getId()))
+            throw new IndexOutOfBoundsException();
+        boolean beenRemoved = graph.removeEdge(edge);
+        if (beenRemoved) {
+            this.edges.remove(edge.getId());
+        }
     }
 
-    <T extends Node> T removeNode(Node node) {
-        return graph.removeNode(node);
+    void removeNode(Node node) {
+        if (!nodes.containsKey(node.getId()))
+            throw new IndexOutOfBoundsException();
+        nodes.remove(node.getId());
+        graph.removeVertex(node);
     }
 
     /**
      * Getter Method to obtain a Node of Graph.
      *
-     * @param <T> the type of node in the graph.
      * @param id string id value to get a Node.
-     * @return
+     * @return the node with according id.
      */
-    public <T extends Node> T getNode(String id) {
-        return graph.getNode(id);
+    public Node getNode(String id) {
+        if (!nodes.containsKey(id))
+            return null;
+        return this.nodes.get(id);
     }
 
     /**
      * Getter Method to obtain an Edge of Graph.
      *
-     * @param <T> the type of edge in the graph.
      * @param id string id value to get an Edge.
-     * @return
+     * @return the edge with according id.
      */
-    public <T extends Edge> T getEdge(String id) {
-        return graph.getEdge(id);
+    public Edge getEdge(String id) {
+        if (!edges.containsKey(id))
+            return null;
+        return this.edges.get(id);
     }
 
 }

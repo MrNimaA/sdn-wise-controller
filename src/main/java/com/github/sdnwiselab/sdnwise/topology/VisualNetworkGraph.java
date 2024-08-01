@@ -17,8 +17,12 @@
 package com.github.sdnwiselab.sdnwise.topology;
 
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Node;
+import org.jgrapht.ext.JGraphXAdapter;
+import org.jgrapht.graph.SimpleGraph;
+
+import javax.swing.*;
+import java.applet.Applet;
+import java.awt.*;
 
 /**
  * This class holds a org.graphstream.graph.Graph object which represent the
@@ -29,7 +33,13 @@ import org.graphstream.graph.Node;
  * @author Sebastiano Milardo
  * @version 0.1
  */
-public final class VisualNetworkGraph extends NetworkGraph {
+public class VisualNetworkGraph extends NetworkGraph {
+
+    private static final long serialVersionUID = 2202072534703043194L;
+
+    private static final Dimension DEFAULT_SIZE = new Dimension(530, 320);
+
+    private JGraphXAdapter<Node, Edge> jgxAdapter;
 
     /**
      * This constructor returns the VisualNetworkGraph object. It requires a
@@ -45,39 +55,39 @@ public final class VisualNetworkGraph extends NetworkGraph {
 
         System.setProperty("org.graphstream.ui.renderer",
                 "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
-        graph.addAttribute("ui.quality");
-        graph.addAttribute("ui.antialias");
-        graph.addAttribute("ui.stylesheet",
-                "url(" + this.getClass().getResource("/style.css") + ")");
-        graph.display(true);
+//        graph.addAttribute("ui.quality");
+//        graph.addAttribute("ui.antialias");
+//        graph.addAttribute("ui.stylesheet",
+//                "url(" + this.getClass().getResource("/style.css") + ")");
+//        graph.display(true);
     }
 
     @Override
     void setupNode(Node node, int batt, long now, int netId, NodeAddress addr) {
         super.setupNode(node, batt, now, netId, addr);
-        node.addAttribute("ui.label", node.getId());
-        node.changeAttribute("ui.style", "fill-color: rgb(0," + batt + ",0),rgb(0,0,0);");
+//        node.addAttribute("ui.label", node.getId());
+//        node.changeAttribute("ui.style", "fill-color: rgb(0," + batt + ",0),rgb(0,0,0);");
     }
 
     @Override
     void updateNode(Node node, int batt, long now) {
         super.updateNode(node, batt, now);
-        node.changeAttribute("ui.style", "fill-color: rgb(0," + batt + ",0),rgb(0,0,0);");
+//        node.changeAttribute("ui.style", "fill-color: rgb(0," + batt + ",0),rgb(0,0,0);");
     }
 
     @Override
     void setupEdge(Edge edge, int newLen) {
         super.setupEdge(edge, newLen);
         int w = 30 + Math.min((((Math.max(255 - newLen, 180)) - 180) * 3), 255);
-        edge.changeAttribute("ui.style", "fill-color: rgba(0,0,0," + w + ");");
-        edge.changeAttribute("ui.style", "arrow-shape: arrow;");
-        edge.changeAttribute("ui.style", "arrow-size: 5px,2px;");
+//        edge.changeAttribute("ui.style", "fill-color: rgba(0,0,0," + w + ");");
+//        edge.changeAttribute("ui.style", "arrow-shape: arrow;");
+//        edge.changeAttribute("ui.style", "arrow-size: 5px,2px;");
     }
 
     @Override
     void updateEdge(Edge edge, int newLen) {
         super.updateEdge(edge, newLen);
         int w = 30 + Math.min((((Math.max(255 - newLen, 180)) - 180) * 3), 255);
-        edge.changeAttribute("ui.style", "fill-color: rgba(0,0,0," + w + ");");
+//        edge.changeAttribute("ui.style", "fill-color: rgba(0,0,0," + w + ");");
     }
 }

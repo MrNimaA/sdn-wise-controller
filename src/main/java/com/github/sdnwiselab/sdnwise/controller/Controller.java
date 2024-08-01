@@ -89,7 +89,6 @@ public abstract class Controller implements Observer, Runnable, ControllerInterf
     /**
      * Constructor Method for the Controller Class.
      *
-     * @param id ControllerId object.
      * @param lower Lower Adpater object.
      * @param networkGraph NetworkGraph object.
      */
