@@ -58,7 +58,6 @@ public class MakeCluster {
         makeCluster(clusteringGraph, networkGraph, 4);
     }
 
-
     public static void setupNewEdge(String from, String to, Graph graph, int capacity, String label) {
         try {
             Edge e = graph.addEdge(from + "-" + to, from, to);
@@ -151,7 +150,7 @@ public class MakeCluster {
             }
         }
         HashMap<String, HashSet<String>> clustering = new HashMap<>();
-        Node last;
+        Node last = null;
         for (Node s : headNodes) {
             dijkstra.clear();
             dijkstra.init(networkGraph);
@@ -172,7 +171,15 @@ public class MakeCluster {
             }
             clustering.put(s.getId(), prev);
             System.out.println("Final Cluster of " + s.getId() + ": " + prev);
+            last = s;
         }
+        HashSet<String> nodeIds = new HashSet<>();
+        assert last != null;
+        nodeIds.add(last.getId());
+        for (Node n: networkGraph.getEachNode())
+            nodeIds.add(n.getId());
+        clustering.put(last.getId(), nodeIds);
+        System.out.println("Final Cluster of " + last.getId() + ": " + nodeIds);
     }
 
     private static HashSet<String> bfs(FordFulkersonAlgorithm fd, Node source) {
