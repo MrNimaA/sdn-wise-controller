@@ -23,6 +23,7 @@ import com.github.sdnwiselab.sdnwise.util.NodeAddress;
 
 import java.util.*;
 
+import com.github.sdnwiselab.sdnwise.utils.Pair;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
@@ -47,10 +48,9 @@ public class CustomController extends Controller {
     private final HashMap<String, HashMap<String, HashSet<String>>> boarderNodes;
     private final SingleGraph clusteringGraph;
     private final Random rand = new Random();
-    /*
+    /**
      * Constructor method fo ControllerDijkstra.
      * 
-     * @param id ControllerId object.
      * @param lower Lower Adpater object.
      * @param networkGraph NetworkGraph object.
      */
@@ -149,7 +149,7 @@ public class CustomController extends Controller {
         String neighbor_s = neighbor.getId() + "_s";
         String neighbor_t = neighbor.getId() + "_t";
         setupNewNodeForClustering(neighbor_s, neighbor_t, clusteringGraph);
-        Pair<Double> distances = getDistance(n, neighbor);
+        Pair<Double, Double> distances = getDistance(n, neighbor);
         double d1 = distances.getFirst();
         double d2 = distances.getSecond();
         try {
@@ -251,7 +251,7 @@ public class CustomController extends Controller {
         e.setAttribute("capacity", 1);
     }
 
-    private Pair<Double> getDistance(Node target1, Node target2) {
+    private Pair<Double, Double> getDistance(Node target1, Node target2) {
         return new Pair<>(dijkstra.getPathLength(target1), dijkstra.getPathLength(target2));
     }
 
@@ -317,24 +317,6 @@ public class CustomController extends Controller {
 
     @Override
     public void setupNetwork() {
-    }
-
-    static class Pair<Double> {
-        private final Double first;
-        private final Double second;
-
-        public Pair(Double first, Double second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        public Double getFirst() {
-            return first;
-        }
-
-        public Double getSecond() {
-            return second;
-        }
     }
 }
 

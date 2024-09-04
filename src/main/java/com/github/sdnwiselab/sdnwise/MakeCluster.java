@@ -1,5 +1,6 @@
 package com.github.sdnwiselab.sdnwise;
 
+import com.github.sdnwiselab.sdnwise.utils.Pair;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
@@ -124,7 +125,7 @@ public class MakeCluster {
         String neighbor_s = neighbor.getId() + "_s";
         String neighbor_t = neighbor.getId() + "_t";
         setupNewNodeForClustering(neighbor_s, neighbor_t, clusteringGraph);
-        Pair<Double> distances = getDistance(n, neighbor);
+        Pair<Double, Double> distances = getDistance(n, neighbor);
         double d1 = distances.getFirst();
         double d2 = distances.getSecond();
         try {
@@ -212,25 +213,7 @@ public class MakeCluster {
         e.setAttribute("capacity", 1);
     }
 
-    private static Pair<Double> getDistance(Node target1, Node target2) {
+    private static Pair<Double, Double> getDistance(Node target1, Node target2) {
         return new Pair<>(dijkstra.getPathLength(target1), dijkstra.getPathLength(target2));
-    }
-}
-
-class Pair<Double> {
-    private final Double first;
-    private final Double second;
-
-    public Pair(Double first, Double second) {
-        this.first = first;
-        this.second = second;
-    }
-
-    public Double getFirst() {
-        return first;
-    }
-
-    public Double getSecond() {
-        return second;
     }
 }
