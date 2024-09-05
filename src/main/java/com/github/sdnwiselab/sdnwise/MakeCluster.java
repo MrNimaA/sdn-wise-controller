@@ -66,7 +66,7 @@ public class MakeCluster {
             // Create or update the source and sink related nodes for clustering graph.
             Node currentNodeSource = updateOrCreateNode(clusteringGraph, currentNode.getId() + "_s");
             Node currentNodeSink = updateOrCreateNode(clusteringGraph, currentNode.getId() + "_t");
-            updateOrCreateEdge(clusteringGraph, currentNodeSink, currentNodeSource, 1, 1);
+            updateOrCreateEdge(clusteringGraph, currentNodeSource, currentNodeSink, 1, 1);
             // Connect the created new nodes to the according proper nodes in clustering graph.
             for (Edge e : currentNode.getEachEdge()) {
                 Node neighbor = e.getOpposite(currentNode);
@@ -81,7 +81,7 @@ public class MakeCluster {
                         Node neighborNodeSink = updateOrCreateNode(clusteringGraph, neighbor.getId() + "_t");
 
                         if (dijkstra.getPathLength(currentNode) > dijkstra.getPathLength(neighbor)) {
-                            updateOrCreateEdge(clusteringGraph, currentNodeSource, neighborNodeSink, 1, networkGraph.getNodeCount());
+                            updateOrCreateEdge(clusteringGraph, neighborNodeSink, currentNodeSource, 1, networkGraph.getNodeCount());
                         } else if (dijkstra.getPathLength(currentNode) < dijkstra.getPathLength(neighbor)) {
                             updateOrCreateEdge(clusteringGraph, currentNodeSink, neighborNodeSource, 1, networkGraph.getNodeCount());
                         } else {
@@ -105,9 +105,12 @@ public class MakeCluster {
         for (Edge e : clusteringGraph.getEachEdge()) {
             Node sourceNode = e.getSourceNode();
             Node targetNode = e.getTargetNode();
-            if (sourceCluster.contains(sourceNode) && !sourceCluster.contains(targetNode)){
-                String actualNodId = sourceNode.getId().split("_")[0];
-                Node n = updateOrCreateNode(networkGraph, actualNodId);
+            if (
+                    (sourceCluster.contains(sourceNode) && !sourceCluster.contains(targetNode)) ||
+                    (sourceCluster.contains(targetNode) && !sourceCluster.contains(sourceNode))
+            ){
+                String actualNodeId = sourceNode.getId().split("_")[0];
+                Node n = updateOrCreateNode(networkGraph, actualNodeId);
                 boarderNodes.add(n);
             }
         }
@@ -165,12 +168,13 @@ public class MakeCluster {
         visited.add(source);
         while (!queue.isEmpty()) {
             Node node = queue.poll();
-            for (Edge e : node.getLeavingEdgeSet()) {
+            for (Edge e : node.getEachLeavingEdge()) {
                 Node neighbor = e.getOpposite(node);
+                double capacity = fd.getCapacity(node, neighbor);
                 double flow = fd.getFlow(node, neighbor);
                 System.out.println("CTRL: Edge from " + node.getId() + " to " + neighbor.getId() + " has flow " + flow);
-                // Only consider edges that have remaining capacity.
-                if (!visited.contains(neighbor) && flow > 0) {
+                // Only consider edges that have remaining residual flow.
+                if (!visited.contains(neighbor) && capacity - flow > 0 && capacity - flow < capacity) {
                     visited.add(neighbor);
                     queue.add(neighbor);
                 }
