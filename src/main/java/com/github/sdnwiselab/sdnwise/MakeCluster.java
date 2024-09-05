@@ -23,7 +23,7 @@ public class MakeCluster {
         System.setProperty("org.graphstream.ui", "swing");
         SingleGraph networkGraph = new SingleGraph("Network Graph");
         updateVisualGraph(networkGraph);
-        MultiGraph clusteringGraph = new MultiGraph("Clustering Graph");
+        SingleGraph clusteringGraph = new SingleGraph("Clustering Graph");
         updateVisualGraph(clusteringGraph);
         for (Map.Entry<Integer, ArrayList<Integer>> entry : BASE_ADJACENCY_LIST.entrySet()) {
             Integer value = entry.getKey();
@@ -71,7 +71,7 @@ public class MakeCluster {
             for (Edge e : currentNode.getEachEdge()) {
                 Node neighbor = e.getOpposite(currentNode);
                 if (neighbor == sink) {
-                    updateOrCreateEdge(clusteringGraph, clusteringSink, currentNodeSink, 1, networkGraph.getNodeCount());
+                    updateOrCreateEdge(clusteringGraph, currentNodeSink, clusteringSink, 1, networkGraph.getNodeCount());
                 } else if (neighbor == source) {
                     updateOrCreateEdge(clusteringGraph, clusteringSource, currentNodeSource, 1, networkGraph.getNodeCount());
                 } else {
@@ -83,19 +83,19 @@ public class MakeCluster {
                         if (dijkstra.getPathLength(sink) > dijkstra.getPathLength(source)) {
                             updateOrCreateEdge(clusteringGraph, currentNodeSink, neighborNodeSource, 1, networkGraph.getNodeCount());
                         } else {
-                            updateOrCreateEdge(clusteringGraph, currentNodeSource, neighborNodeSink, 1, networkGraph.getNodeCount());
-                        }
+                            updateOrCreateEdge(clusteringGraph, neighborNodeSink, currentNodeSource, 1, networkGraph.getNodeCount());                        }
                     }
                 }
             }
         }
+
         // Run the Min-Cut algorithm to split the graph into two clusters.
         System.out.println("CTRL: Running Min-Cut Algorithm on the clustering graph...");
         FordFulkersonAlgorithm fd = new FordFulkersonAlgorithm();
         fd.setCapacityAttribute("capacity");
         fd.init(clusteringGraph, clusteringSource.getId(), clusteringSink.getId());
         fd.compute();
-        System.out.println("CTRL: Ford Fulkerson Algorithm completed.");
+        System.out.println("CTRL: Ford Fulkerson Algorithm completed with max flow " + fd.getMaximumFlow());
         // Find cut edges in order to find out which nodes are border nodes.
         Set<Node> sourceCluster = bfs(fd, clusteringSource);
         HashSet<Node> boarderNodes = new HashSet<>();
@@ -162,12 +162,12 @@ public class MakeCluster {
         visited.add(source);
         while (!queue.isEmpty()) {
             Node node = queue.poll();
-            for (Edge e : node.getEachEdge()) {
+            for (Edge e : node.getLeavingEdgeSet()) {
                 Node neighbor = e.getOpposite(node);
-                double capacity = fd.getCapacity(node, neighbor);
-                System.out.println("CTRL: Edge from " + node.getId() + " to " + neighbor.getId() + " has capacity " + capacity);
+                double flow = fd.getFlow(node, neighbor);
+                System.out.println("CTRL: Edge from " + node.getId() + " to " + neighbor.getId() + " has flow " + flow);
                 // Only consider edges that have remaining capacity.
-                if (!visited.contains(neighbor) && capacity >= 0) {
+                if (!visited.contains(neighbor) && flow >= 0) {
                     visited.add(neighbor);
                     queue.add(neighbor);
                 }
@@ -176,26 +176,20 @@ public class MakeCluster {
         return visited;
     }
 
-    private static String getEdgeIDBasedOnNodes(Node n1, Node n2) {
-        String id1 = n1.getId();
-        String id2 = n2.getId();
-
-        return id1 + "-" + id2;
-    }
-
     private static void updateVisualGraph(Graph graph) {
         graph.addAttribute("ui.quality");
         graph.addAttribute("ui.antialias");
         graph.display();
     }
 
-    private static Edge updateOrCreateEdge(Graph networkGraph, Node currentNode, Node neighborNode, int length, int capacity) {
-        Edge e = networkGraph.getEdge(getEdgeIDBasedOnNodes(currentNode, neighborNode));
+    private static Edge updateOrCreateEdge(Graph networkGraph, Node sourceNode, Node targetNode, int length, int capacity) {
+        Edge e = networkGraph.getEdge(sourceNode.getId() + "-" + targetNode.getId());
         if (e == null) {
-            e = networkGraph.addEdge(getEdgeIDBasedOnNodes(currentNode, neighborNode), currentNode, neighborNode);
+            e = networkGraph.addEdge(sourceNode.getId() + "-" + targetNode.getId(), sourceNode, targetNode);
         }
+        Integer[] capacities = {capacity, capacity};
         e.setAttribute("length", length);
-        e.setAttribute("capacity", capacity);
+        e.setAttribute("capacity", (Object[]) capacities);
         return e;
     }
 
