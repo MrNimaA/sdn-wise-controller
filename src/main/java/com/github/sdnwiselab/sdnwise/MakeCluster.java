@@ -11,7 +11,7 @@ import java.util.*;
 public class MakeCluster {
     private static final HashMap<Integer, ArrayList<Integer>> BASE_ADJACENCY_LIST = new HashMap<Integer, ArrayList<Integer>>() {{
         put(0, new ArrayList<>(Arrays.asList(1, 2)));
-        put(1, new ArrayList<>(Arrays.asList(3)));
+        put(1, new ArrayList<>(Arrays.asList(2, 3)));
         put(2, new ArrayList<>(Arrays.asList(4)));
         put(3, new ArrayList<>(Arrays.asList(5)));
         put(4, new ArrayList<>(Arrays.asList(5, 6)));
