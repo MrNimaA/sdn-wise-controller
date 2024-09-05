@@ -3,7 +3,6 @@ package com.github.sdnwiselab.sdnwise;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
-import org.graphstream.graph.implementations.MultiGraph;
 import org.graphstream.graph.implementations.SingleGraph;
 
 import java.util.*;
@@ -54,15 +53,16 @@ public class MakeCluster {
             Node source, Node sink, Graph clusteringGraph, Graph networkGraph
     ) {
         clusteringGraph.clear();
+        // Run Dijkstra from source before we start exploring its neighbor nodes.
+        dijkstra.setSource(source);
+        dijkstra.compute();
+        // Create source and sink nodes for the clustering graph.
         Node clusteringSource = updateOrCreateNode(clusteringGraph, source.getId());
         Node clusteringSink = updateOrCreateNode(clusteringGraph, sink.getId());
 
         for (Node currentNode : networkGraph.getEachNode()) {
             if (currentNode == source || currentNode == sink)
                 continue;
-            // Run Dijkstra for current node before we start exploring its neighbor nodes.
-            dijkstra.setSource(currentNode);
-            dijkstra.compute();
             // Create or update the source and sink related nodes for clustering graph.
             Node currentNodeSource = updateOrCreateNode(clusteringGraph, currentNode.getId() + "_s");
             Node currentNodeSink = updateOrCreateNode(clusteringGraph, currentNode.getId() + "_t");
@@ -80,10 +80,13 @@ public class MakeCluster {
                         Node neighborNodeSource = updateOrCreateNode(clusteringGraph, neighbor.getId() + "_s");
                         Node neighborNodeSink = updateOrCreateNode(clusteringGraph, neighbor.getId() + "_t");
 
-                        if (dijkstra.getPathLength(sink) > dijkstra.getPathLength(source)) {
+                        if (dijkstra.getPathLength(currentNode) > dijkstra.getPathLength(neighbor)) {
+                            updateOrCreateEdge(clusteringGraph, currentNodeSource, neighborNodeSink, 1, networkGraph.getNodeCount());
+                        } else if (dijkstra.getPathLength(currentNode) < dijkstra.getPathLength(neighbor)) {
                             updateOrCreateEdge(clusteringGraph, currentNodeSink, neighborNodeSource, 1, networkGraph.getNodeCount());
                         } else {
-                            updateOrCreateEdge(clusteringGraph, neighborNodeSink, currentNodeSource, 1, networkGraph.getNodeCount());                        }
+                            updateOrCreateEdge(clusteringGraph, currentNodeSource, neighborNodeSource, 1, networkGraph.getNodeCount());
+                        }
                     }
                 }
             }
@@ -167,7 +170,7 @@ public class MakeCluster {
                 double flow = fd.getFlow(node, neighbor);
                 System.out.println("CTRL: Edge from " + node.getId() + " to " + neighbor.getId() + " has flow " + flow);
                 // Only consider edges that have remaining capacity.
-                if (!visited.contains(neighbor) && flow >= 0) {
+                if (!visited.contains(neighbor) && flow > 0) {
                     visited.add(neighbor);
                     queue.add(neighbor);
                 }
