@@ -17,6 +17,8 @@ public class MakeCluster {
         put(5, new ArrayList<>(Arrays.asList(6)));
     }};
     private static Dijkstra dijkstra;
+    private static final HashMap<Node, Node> nodesToClusterNode = new HashMap<>();
+    private static final HashMap<Node, HashSet<Node>> clusterNodesToBoarderNodes = new HashMap<>();
 
     public static void main(String[] args) {
         System.setProperty("org.graphstream.ui", "swing");
@@ -37,19 +39,63 @@ public class MakeCluster {
         // Run dijkstra on network graph
         dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
         dijkstra.init(networkGraph);
-        HashSet<Node> boarderNodes = partitionIntoTwoClusters(
+        partitionIntoTwoClusters(
                 updateOrCreateNode(networkGraph, String.valueOf(0)),
                 updateOrCreateNode(networkGraph, String.valueOf(6)),
                 clusteringGraph,
                 networkGraph
         );
-        for (Node node : boarderNodes) {
-            System.out.println(node);
-        }
+        System.out.println("CTRL: boarder nodes are " + clusterNodesToBoarderNodes);
+        System.out.println(nodesToClusterNode);
 //        makeCluster(clusteringGraph, networkGraph, 4);
     }
 
-    public static HashSet<Node> partitionIntoTwoClusters(
+//        public static void makeCluster(Graph clusteringGraph, Graph networkGraph, int clusterNumber) {
+//        int nodeNumber = networkGraph.getNodeCount();
+//        Random random = new Random();
+//        HashSet<Node> headNodes = new HashSet<>();
+//        while (headNodes.size() < clusterNumber) {
+//            Node candidate = networkGraph.getNode(random.nextInt(nodeNumber));
+//            boolean isNeighbor = headNodes.stream().anyMatch(head -> head.hasEdgeBetween(candidate));
+//            if (!isNeighbor) {
+//                headNodes.add(candidate);
+//            }
+//        }
+//        HashMap<String, HashSet<String>> clustering = new HashMap<>();
+//        Node last = null;
+//        for (Node s : headNodes) {
+//            dijkstra.clear();
+//            dijkstra.init(networkGraph);
+//            dijkstra.setSource(s);
+//            dijkstra.compute();
+//            HashSet<String> prev = new HashSet<>();
+//            System.out.println(s.getId());
+//            System.out.println(headNodes);
+//            for (Node t : headNodes) {
+//                if (t.getId().equals(s.getId()) || clustering.containsKey(t.getId())) continue;
+//                clusteringGraph.clear();
+//                HashSet<String> clusterS = partitionIntoTwoClusters(s, t, clusteringGraph, networkGraph);
+//                if (prev.isEmpty()) prev = clusterS;
+//                else prev.retainAll(clusterS);
+//            }
+//            for (String nodeId : prev) {
+//                networkGraph.removeNode(nodeId);
+//            }
+//            clustering.put(s.getId(), prev);
+//            System.out.println("Final Cluster of " + s.getId() + ": " + prev);
+//            last = s;
+//        }
+//        HashSet<String> nodeIds = new HashSet<>();
+//        assert last != null;
+//        nodeIds.add(last.getId());
+//        for (Node n : networkGraph.getEachNode())
+//            nodeIds.add(n.getId());
+//        clustering.put(last.getId(), nodeIds);
+//        System.out.println("Final Cluster of " + last.getId() + ": " + nodeIds);
+//        }
+//    }
+
+    public static void partitionIntoTwoClusters(
             Node source, Node sink, Graph clusteringGraph, Graph networkGraph
     ) {
         clusteringGraph.clear();
@@ -98,68 +144,23 @@ public class MakeCluster {
         fd.setCapacityAttribute("capacity");
         fd.init(clusteringGraph, clusteringSource.getId(), clusteringSink.getId());
         fd.compute();
-        System.out.println("CTRL: Ford Fulkerson Algorithm completed with max flow " + fd.getMaximumFlow());
+        System.out.println("CTRL: Ford Fulkerson Algorithm completed with max flow " + fd.getMaximumFlow() + ".");
         // Find cut edges in order to find out which nodes are border nodes.
         Set<Node> sourceCluster = bfs(fd, clusteringSource);
-        HashSet<Node> boarderNodes = new HashSet<>();
-        for (Edge e : clusteringGraph.getEachEdge()) {
-            Node sourceNode = e.getSourceNode();
-            Node targetNode = e.getTargetNode();
-            if (
-                    (sourceCluster.contains(sourceNode) && !sourceCluster.contains(targetNode)) ||
-                    (sourceCluster.contains(targetNode) && !sourceCluster.contains(sourceNode))
-            ){
-                String actualNodeId = sourceNode.getId().split("_")[0];
-                Node n = updateOrCreateNode(networkGraph, actualNodeId);
-                boarderNodes.add(n);
+        System.out.println("CTRL: Cluster graph of node "+ source.getId() +" is " + sourceCluster);
+        for (Node node : sourceCluster) {
+            Node actualNode = updateOrCreateNode(networkGraph, node.getId().split("_")[0]);
+            nodesToClusterNode.put(actualNode, source);
+            for (Edge edge : node.getEachEdge()) {
+                Node neighbor = edge.getOpposite(node);
+                if (!sourceCluster.contains(neighbor)){
+                    HashSet<Node> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(source, new HashSet<>());
+                    boarderNodes.add(actualNode);
+                    clusterNodesToBoarderNodes.put(source, boarderNodes);
+                }
             }
         }
-        return boarderNodes;
     }
-
-//    public static void makeCluster(Graph clusteringGraph, Graph networkGraph, int clusterNumber) {
-//        int nodeNumber = networkGraph.getNodeCount();
-//        Random random = new Random();
-//        HashSet<Node> headNodes = new HashSet<>();
-//        while (headNodes.size() < clusterNumber) {
-//            Node candidate = networkGraph.getNode(random.nextInt(nodeNumber));
-//            boolean isNeighbor = headNodes.stream().anyMatch(head -> head.hasEdgeBetween(candidate));
-//            if (!isNeighbor) {
-//                headNodes.add(candidate);
-//            }
-//        }
-//        HashMap<String, HashSet<String>> clustering = new HashMap<>();
-//        Node last = null;
-//        for (Node s : headNodes) {
-//            dijkstra.clear();
-//            dijkstra.init(networkGraph);
-//            dijkstra.setSource(s);
-//            dijkstra.compute();
-//            HashSet<String> prev = new HashSet<>();
-//            System.out.println(s.getId());
-//            System.out.println(headNodes);
-//            for (Node t : headNodes) {
-//                if (t.getId().equals(s.getId()) || clustering.containsKey(t.getId())) continue;
-//                clusteringGraph.clear();
-//                HashSet<String> clusterS = partitionIntoTwoClusters(s, t, clusteringGraph, networkGraph);
-//                if (prev.isEmpty()) prev = clusterS;
-//                else prev.retainAll(clusterS);
-//            }
-//            for (String nodeId : prev) {
-//                networkGraph.removeNode(nodeId);
-//            }
-//            clustering.put(s.getId(), prev);
-//            System.out.println("Final Cluster of " + s.getId() + ": " + prev);
-//            last = s;
-//        }
-//        HashSet<String> nodeIds = new HashSet<>();
-//        assert last != null;
-//        nodeIds.add(last.getId());
-//        for (Node n : networkGraph.getEachNode())
-//            nodeIds.add(n.getId());
-//        clustering.put(last.getId(), nodeIds);
-//        System.out.println("Final Cluster of " + last.getId() + ": " + nodeIds);
-//    }
 
     private static Set<Node> bfs(FordFulkersonAlgorithm fd, Node source) {
         Set<Node> visited = new HashSet<>();
@@ -170,12 +171,13 @@ public class MakeCluster {
             Node node = queue.poll();
             for (Edge e : node.getEachLeavingEdge()) {
                 Node neighbor = e.getOpposite(node);
+                if (visited.contains(neighbor))
+                    continue;
+                visited.add(neighbor);
                 double capacity = fd.getCapacity(node, neighbor);
                 double flow = fd.getFlow(node, neighbor);
-                System.out.println("CTRL: Edge from " + node.getId() + " to " + neighbor.getId() + " has flow " + flow);
                 // Only consider edges that have remaining residual flow.
-                if (!visited.contains(neighbor) && capacity - flow > 0 && capacity - flow < capacity) {
-                    visited.add(neighbor);
+                if (capacity - flow > 0) {
                     queue.add(neighbor);
                 }
             }
