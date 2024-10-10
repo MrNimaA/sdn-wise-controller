@@ -38,7 +38,7 @@ import org.graphstream.graph.implementations.SingleGraph;
  * @author Sebastiano Milardo
  * @version 0.1
  */
-public class CustomController extends Controller {
+public class MultiClusterController extends Controller {
 
     private final Dijkstra dijkstra;
     private String lastSource = "";
@@ -53,7 +53,7 @@ public class CustomController extends Controller {
      * @param lower Lower Adpater object.
      * @param networkGraph NetworkGraph object.
      */
-    public CustomController(Adapter lower, NetworkGraph networkGraph) {
+    public MultiClusterController(Adapter lower, NetworkGraph networkGraph) {
         super(lower, networkGraph);
         dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
         nodesToClusterNode = new HashMap<>();

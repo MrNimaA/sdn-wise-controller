@@ -19,10 +19,8 @@ package com.github.sdnwiselab.sdnwise.loader;
 import com.github.sdnwiselab.sdnwise.configuration.Configurator;
 import com.github.sdnwiselab.sdnwise.controller.Controller;
 import com.github.sdnwiselab.sdnwise.controller.ControllerFactory;
-import com.github.sdnwiselab.sdnwise.controller.CustomController;
 import com.github.sdnwiselab.sdnwise.packet.DataPacket;
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
-import org.graphstream.graph.Graph;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
