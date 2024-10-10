@@ -3,6 +3,7 @@ package com.github.sdnwiselab.sdnwise;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
+import org.graphstream.graph.implementations.Graphs;
 import org.graphstream.graph.implementations.SingleGraph;
 
 import java.util.*;
@@ -26,7 +27,7 @@ public class MakeCluster {
         SingleGraph clusteringGraph = new SingleGraph("Clustering Graph");
         updateVisualGraph(clusteringGraph);
         // This is a Toff to have a good visualization of the network.
-        Graph copyNetworkGraph = createGraphFromAdjList("Copy Network Graph");
+        Graph copyNetworkGraph = Graphs.clone(networkGraph);
         updateVisualGraph(copyNetworkGraph);
 
         // Initialize dijkstra on network graph.
