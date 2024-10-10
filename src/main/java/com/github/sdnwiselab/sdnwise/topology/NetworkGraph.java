@@ -18,13 +18,14 @@ package com.github.sdnwiselab.sdnwise.topology;
 
 import com.github.sdnwiselab.sdnwise.packet.ReportPacket;
 import com.github.sdnwiselab.sdnwise.util.NodeAddress;
-import java.util.HashSet;
-import java.util.Observable;
-import java.util.Set;
+
+import java.util.*;
+
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.MultiGraph;
+import org.graphstream.graph.implementations.SingleGraph;
 
 /**
  * This class holds a org.graphstream.graph.Graph object which represent the
@@ -36,7 +37,7 @@ import org.graphstream.graph.implementations.MultiGraph;
  */
 public class NetworkGraph extends Observable {
 
-    final Graph graph;
+    protected final Graph graph;
     private long lastModification;
     private final int timeout;
     final int rssiResolution;
@@ -52,7 +53,7 @@ public class NetworkGraph extends Observable {
      * @param rssiResolution the RSSI resolution
      */
     public NetworkGraph(int timeout, int rssiResolution) {
-        this.graph = new MultiGraph("SDN-WISE Network");
+        this.graph = new SingleGraph("SDN-WISE Network");
         this.lastModification = Long.MIN_VALUE;
         this.rssiResolution = rssiResolution;
         this.timeout = timeout;
@@ -115,6 +116,7 @@ public class NetworkGraph extends Observable {
         NodeAddress addr = packet.getSrc();
 
         Node node = getNode(fullNodeId);
+        Map<Edge, Integer> edgeLengths = new HashMap<>();
 
         if (node == null) {
             node = addNode(fullNodeId);
@@ -130,17 +132,20 @@ public class NetworkGraph extends Observable {
 
                 int newLen = 255 - packet.getNeighbourWeight(i);
                 String edgeId = other + "-" + fullNodeId;
-                Edge edge = addEdge(edgeId, other, node.getId(), true);
-                setupEdge(edge, newLen);
+                Edge edge = getEdge(edgeId);
+                if (edge == null){
+                    String reversedEdgeId = fullNodeId + "-" + other;
+                    edge = getEdge(reversedEdgeId);
+                }
+                if (edge == null) {
+                    edge = addEdge(edgeId, other, node.getId());
+                }
+                edgeLengths.put(edge, newLen);
             }
             modified = true;
-
         } else {
             updateNode(node, batt, now);
-            Set<Edge> oldEdges = new HashSet<>();
-            for (Edge e : node.getEnteringEdgeSet()) {
-                oldEdges.add(e);
-            }
+            Set<Edge> oldEdges = new HashSet<>(node.getEdgeSet());
 
             for (int i = 0; i < packet.getNeigh(); i++) {
                 NodeAddress otheraddr = packet.getNeighbourAddress(i);
@@ -154,6 +159,10 @@ public class NetworkGraph extends Observable {
 
                 String edgeId = other + "-" + fullNodeId;
                 Edge edge = getEdge(edgeId);
+                if (edge == null){
+                    String reversedEdgeId = fullNodeId + "-" + other;
+                    edge = getEdge(reversedEdgeId);
+                }
                 if (edge != null) {
                     oldEdges.remove(edge);
                     int oldLen = edge.getAttribute("length");
@@ -162,8 +171,8 @@ public class NetworkGraph extends Observable {
                         modified = true;
                     }
                 } else {
-                    Edge tmp = addEdge(edgeId, other, node.getId(), true);
-                    setupEdge(tmp, newLen);
+                    Edge tmp = addEdge(edgeId, other, node.getId());
+                    edgeLengths.put(tmp, newLen);
                     modified = true;
                 }
             }
@@ -177,6 +186,16 @@ public class NetworkGraph extends Observable {
         }
 
         if (modified) {
+            for (Edge e : graph.getEdgeSet()) {
+                if (edgeLengths.containsKey(e)) {
+                    Integer newLength = edgeLengths.get(e);
+                    setupEdge(e, newLength, graph.getNodeCount());
+                }
+                else {
+                    int oldLen = e.getAttribute("length");
+                    setupEdge(e, oldLen, graph.getNodeCount());
+                }
+            }
             lastModification++;
             setChanged();
             notifyObservers();
@@ -199,8 +218,10 @@ public class NetworkGraph extends Observable {
         node.addAttribute("lastSeen", now);
     }
 
-    void setupEdge(Edge edge, int newLen) {
+    void setupEdge(Edge edge, int newLen, int capacity) {
+        Integer[] capacities = {capacity, capacity};
         edge.addAttribute("length", newLen);
+        edge.addAttribute("capacity", (Object[]) capacities);
     }
 
     void updateEdge(Edge edge, int newLen) {
@@ -211,9 +232,8 @@ public class NetworkGraph extends Observable {
         return graph.addNode(id);
     }
 
-    <T extends Edge> T addEdge(String id, String from, String to,
-            boolean directed) {
-        return graph.addEdge(id, from, to, directed);
+    <T extends Edge> T addEdge(String id, String from, String to) {
+        return graph.addEdge(id, from, to);
     }
 
     <T extends Edge> T removeEdge(Edge edge) {
@@ -245,5 +265,4 @@ public class NetworkGraph extends Observable {
     public <T extends Edge> T getEdge(String id) {
         return graph.getEdge(id);
     }
-
 }

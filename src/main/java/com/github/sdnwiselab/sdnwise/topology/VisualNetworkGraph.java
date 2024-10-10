@@ -66,8 +66,8 @@ public final class VisualNetworkGraph extends NetworkGraph {
     }
 
     @Override
-    void setupEdge(Edge edge, int newLen) {
-        super.setupEdge(edge, newLen);
+    void setupEdge(Edge edge, int newLen, int capacity) {
+        super.setupEdge(edge, newLen, capacity);
         int w = 30 + Math.min((((Math.max(255 - newLen, 180)) - 180) * 3), 255);
         edge.changeAttribute("ui.style", "fill-color: rgba(0,0,0," + w + ");");
         edge.changeAttribute("ui.style", "arrow-shape: arrow;");

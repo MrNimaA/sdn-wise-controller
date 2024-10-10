@@ -40,10 +40,9 @@ public class ControllerDijkstra extends Controller {
 
     private long lastModification = -1;
 
-    /*
+    /**
      * Constructor method fo ControllerDijkstra.
      * 
-     * @param id ControllerId object.
      * @param lower Lower Adpater object.
      * @param networkGraph NetworkGraph object.
      */
