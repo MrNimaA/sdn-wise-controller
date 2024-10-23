@@ -35,10 +35,10 @@ import org.graphstream.graph.Node;
  */
 public class ControllerDijkstra extends Controller {
 
-    private final Dijkstra dijkstra;
-    private String lastSource = "";
+    protected Dijkstra dijkstra;
+    protected String lastSource = "";
 
-    private long lastModification = -1;
+    protected long lastModification = -1;
 
     /**
      * Constructor method fo ControllerDijkstra.
@@ -52,7 +52,7 @@ public class ControllerDijkstra extends Controller {
     }
 
     @Override
-    public final void graphUpdate() {
+    public void graphUpdate() {
         System.out.println("Graph update");
         for (Node n: networkGraph.getGraph()) {
             System.out.println(n.toString());
@@ -62,7 +62,7 @@ public class ControllerDijkstra extends Controller {
     }
 
     @Override
-    public final void manageRoutingRequest(NetworkPacket data) {
+    public void manageRoutingRequest(NetworkPacket data) {
         System.out.println("Manage routing request");
         String destination = data.getNetId() + "." + data.getDst();
         String source = data.getNetId() + "." + data.getSrc();

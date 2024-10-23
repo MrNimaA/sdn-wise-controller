@@ -17,12 +17,11 @@
 package com.github.sdnwiselab.sdnwise.controller;
 
 import com.github.sdnwiselab.sdnwise.adapter.Adapter;
-import com.github.sdnwiselab.sdnwise.packet.NetworkPacket;
 import com.github.sdnwiselab.sdnwise.topology.NetworkGraph;
-import com.github.sdnwiselab.sdnwise.util.NodeAddress;
 
 import java.util.*;
 
+import com.github.sdnwiselab.sdnwise.utils.ClusteringDijkstra;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
@@ -38,13 +37,9 @@ import org.graphstream.graph.implementations.SingleGraph;
  * @author Sebastiano Milardo
  * @version 0.1
  */
-public class MultiClusterController extends Controller {
-
-    private final Dijkstra dijkstra;
-    private String lastSource = "";
-    private long lastModification = -1;
-    private HashMap<Node, Node> nodesToClusterNode = new HashMap<>();
-    private HashMap<Node, HashSet<Node>> clusterNodesToBoarderNodes = new HashMap<>();
+public class MultiClusterController extends ControllerDijkstra {
+    private HashMap<String, String> nodesToClusterNode;
+    private HashMap<String, HashSet<String>> clusterNodesToBoarderNodes;
     private Graph networkGraphCopy;
 
     /**
@@ -55,10 +50,16 @@ public class MultiClusterController extends Controller {
      */
     public MultiClusterController(Adapter lower, NetworkGraph networkGraph) {
         super(lower, networkGraph);
-        dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
         nodesToClusterNode = new HashMap<>();
         clusterNodesToBoarderNodes = new HashMap<>();
         networkGraphCopy = Graphs.clone(networkGraph.getGraph());
+        dijkstra = new ClusteringDijkstra(
+                Dijkstra.Element.EDGE,
+                null,
+                "length",
+                nodesToClusterNode,
+                clusterNodesToBoarderNodes
+        );
     }
 
     /**
@@ -141,11 +142,12 @@ public class MultiClusterController extends Controller {
 
         HashSet<Node> nodes = new HashSet<>();
         Queue<Node> queue = new LinkedList<>();
+        assert lastHeadNode != null;
         queue.add(lastHeadNode);
         nodes.add(lastHeadNode);
         while (!queue.isEmpty()) {
             Node node = queue.poll();
-            nodesToClusterNode.put(node, lastHeadNode);
+            nodesToClusterNode.put(node.getId(), lastHeadNode.getId());
             boolean hadAddedToNodes = false;
             for (Edge e : node.getEdgeSet()) {
                 Node neighbor = e.getOpposite(node);
@@ -156,9 +158,9 @@ public class MultiClusterController extends Controller {
                 hadAddedToNodes = true;
             }
             if (!hadAddedToNodes) {
-                HashSet<Node> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(lastHeadNode, new HashSet<>());
-                boarderNodes.add(node);
-                clusterNodesToBoarderNodes.put(lastHeadNode, boarderNodes);
+                HashSet<String> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(lastHeadNode.getId(), new HashSet<>());
+                boarderNodes.add(node.getId());
+                clusterNodesToBoarderNodes.put(lastHeadNode.getId(), boarderNodes);
             }
         }
         clusters.put(lastHeadNode, nodes);
@@ -223,13 +225,13 @@ public class MultiClusterController extends Controller {
         for (Node node : sourceCluster) {
             Node actualNode = updateOrCreateNode(networkGraph, node.getId().split("_")[0]);
             cluster.add(actualNode);
-            nodesToClusterNode.put(actualNode, source);
+            nodesToClusterNode.put(actualNode.getId(), source.getId());
             for (Edge edge : node.getEachEdge()) {
                 Node neighbor = edge.getOpposite(node);
                 if (!sourceCluster.contains(neighbor)){
-                    HashSet<Node> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(source, new HashSet<>());
-                    boarderNodes.add(actualNode);
-                    clusterNodesToBoarderNodes.put(source, boarderNodes);
+                    HashSet<String> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(source.getId(), new HashSet<>());
+                    boarderNodes.add(actualNode.getId());
+                    clusterNodesToBoarderNodes.put(source.getId(), boarderNodes);
                 }
             }
         }
@@ -292,60 +294,6 @@ public class MultiClusterController extends Controller {
         System.out.println("[CTRL]: Finished make cluster.");
         System.out.println("[CTRL]: boarder nodes are : " + clusterNodesToBoarderNodes);
         System.out.println("[CTRL]: nodes to cluster node are : " + nodesToClusterNode);
-    }
-
-    @Override
-    public final void manageRoutingRequest(NetworkPacket data) {
-
-        String destination = data.getNetId() + "." + data.getDst();
-        String source = data.getNetId() + "." + data.getSrc();
-
-        if (!source.equals(destination)) {
-
-            Node sourceNode = networkGraph.getNode(source);
-            Node destinationNode = networkGraph.getNode(destination);
-
-//            Node sourceHead = getHeadClusterNode(sourceNode);
-//            Node destHead = getHeadClusterNode(sourceNode);
-
-            LinkedList<NodeAddress> path = null;
-
-            if (sourceNode != null && destinationNode != null) {
-
-                if (!lastSource.equals(source) || lastModification != networkGraph.getLastModification()) {
-                    results.clear();
-                    dijkstra.init(networkGraph.getGraph());
-                    dijkstra.setSource(networkGraph.getNode(source));
-                    dijkstra.compute();
-                    lastSource = source;
-                    lastModification = networkGraph.getLastModification();
-                } else {
-                    path = results.get(data.getDst());
-                }
-                if (path == null) {
-                    path = new LinkedList<>();
-                    for (Node node : dijkstra.getPathNodes(networkGraph.getNode(destination))) {
-                        path.push((NodeAddress) node.getAttribute("nodeAddress"));
-                    }
-                    System.out.println("[CTRL]: " + path);
-                    results.put(data.getDst(), path);
-                }
-                if (path.size() > 1) {
-                    sendPath((byte) data.getNetId(), path.getFirst(), path);
-                    data.unsetRequestFlag();
-                    data.setSrc(getSinkAddress());
-                    sendNetworkPacket(data);
-
-                } else {
-                    // TODO send a rule in order to say "wait I dont have a path"
-                    //sendMessage(data.getNetId(), data.getDst(),(byte) 4, new byte[10]);
-                }
-            }
-        }
-    }
-
-    @Override
-    public void setupNetwork() {
     }
 }
 

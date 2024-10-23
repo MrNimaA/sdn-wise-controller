@@ -1,5 +1,6 @@
 package com.github.sdnwiselab.sdnwise;
 
+import com.github.sdnwiselab.sdnwise.utils.ClusteringDijkstra;
 import org.graphstream.algorithm.Dijkstra;
 import org.graphstream.algorithm.flow.FordFulkersonAlgorithm;
 import org.graphstream.graph.*;
@@ -18,8 +19,8 @@ public class MakeCluster {
         put(5, new ArrayList<>(Arrays.asList(6)));
     }};
     private static Dijkstra dijkstra;
-    private static final HashMap<Node, Node> nodesToClusterNode = new HashMap<>();
-    private static final HashMap<Node, HashSet<Node>> clusterNodesToBoarderNodes = new HashMap<>();
+    private static final HashMap<String, String> nodesToClusterNode = new HashMap<>();
+    private static final HashMap<String, HashSet<String>> clusterNodesToBoarderNodes = new HashMap<>();
 
     public static void main(String[] args) {
         System.setProperty("org.graphstream.ui", "swing");
@@ -38,8 +39,30 @@ public class MakeCluster {
                 networkGraph,
                 getHeadNodes(networkGraph, new String[]{String.valueOf(0), String.valueOf(6)}, null)
         );
+
+        Node source = updateOrCreateNode(copyNetworkGraph, String.valueOf(0));
+        Node target = updateOrCreateNode(copyNetworkGraph, String.valueOf(6));
+
+        // Remove Node 4 from cluster 6 boarder nodes. So the final path should be [0, 1, 3, 5, 6] besides the main dijkstra.
+        clusterNodesToBoarderNodes.get("6").remove("4");
         System.out.println("CTRL: boarder nodes are : " + clusterNodesToBoarderNodes);
         System.out.println("CTRL: nodes to cluster node are : " + nodesToClusterNode);
+
+        ClusteringDijkstra clusteringDijkstra = new ClusteringDijkstra(
+                Dijkstra.Element.EDGE,
+                null,
+                "length",
+                nodesToClusterNode,
+                clusterNodesToBoarderNodes
+        );
+        clusteringDijkstra.init(copyNetworkGraph);
+        clusteringDijkstra.setSource(source);
+        clusteringDijkstra.compute();
+        LinkedList<Node> path = new LinkedList<>();
+        for (Node node : clusteringDijkstra.getPathNodes(target)) {
+            path.push(node);
+        }
+        System.out.println("CTRL: path from " + source + " to " + target + " is " + path);
     }
 
     public static Graph createGraphFromAdjList(String graphId) {
@@ -131,7 +154,7 @@ public class MakeCluster {
         nodes.add(lastHeadNode);
         while (!queue.isEmpty()) {
             Node node = queue.poll();
-            nodesToClusterNode.put(node, lastHeadNode);
+            nodesToClusterNode.put(node.getId(), lastHeadNode.getId());
             boolean hadAddedToNodes = false;
             for (Edge e : node.getEdgeSet()) {
                 Node neighbor = e.getOpposite(node);
@@ -142,9 +165,9 @@ public class MakeCluster {
                 hadAddedToNodes = true;
             }
             if (!hadAddedToNodes) {
-                HashSet<Node> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(lastHeadNode, new HashSet<>());
-                boarderNodes.add(node);
-                clusterNodesToBoarderNodes.put(lastHeadNode, boarderNodes);
+                HashSet<String> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(lastHeadNode.getId(), new HashSet<>());
+                boarderNodes.add(node.getId());
+                clusterNodesToBoarderNodes.put(lastHeadNode.getId(), boarderNodes);
             }
         }
         clustering.put(lastHeadNode, nodes);
@@ -209,13 +232,13 @@ public class MakeCluster {
         for (Node node : sourceCluster) {
             Node actualNode = updateOrCreateNode(networkGraph, node.getId().split("_")[0]);
             cluster.add(actualNode);
-            nodesToClusterNode.put(actualNode, source);
+            nodesToClusterNode.put(actualNode.getId(), source.getId());
             for (Edge edge : node.getEachEdge()) {
                 Node neighbor = edge.getOpposite(node);
                 if (!sourceCluster.contains(neighbor)){
-                    HashSet<Node> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(source, new HashSet<>());
-                    boarderNodes.add(actualNode);
-                    clusterNodesToBoarderNodes.put(source, boarderNodes);
+                    HashSet<String> boarderNodes = clusterNodesToBoarderNodes.getOrDefault(source.getId(), new HashSet<>());
+                    boarderNodes.add(actualNode.getId());
+                    clusterNodesToBoarderNodes.put(source.getId(), boarderNodes);
                 }
             }
         }
